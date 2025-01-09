@@ -10,12 +10,107 @@
 
 namespace ExpressionEngine\Controller\Utilities;
 
+use ExpressionEngine\Library\CP\Table;
+
 /**
  * Database Backup Utility Controller
  */
 class DbBackup extends Utilities
 {
+    public $per_page = 25;
+
+    protected $base_url = '';
+
     public function index()
+    {
+        $sort_col = ee('Request')->get('sort_col') ?: 'bm.id';
+        $sort_dir = ee('Request')->get('sort_dir') ?: 'desc';
+        $this->per_page = ee('Request')->get('perpage') ?: $this->per_page;
+
+        $query = [
+            'sort_col' => $sort_col,
+            'sort_dir' => $sort_dir,
+        ];
+
+        $base_url = ee('CP/URL')->make($this->base_url . '/index', $query);
+        $table = ee('CP/Table', [
+            'lang_cols' => true,
+            'sort_col' => $sort_col,
+            'sort_dir' => $sort_dir,
+            'class' => 'backup_manager',
+            'limit' => $this->per_page,
+        ]);
+
+        $vars['cp_page_title'] = lang('bm.title');
+        $table->setColumns([
+            'bm.file_name' => ['sort' => false],
+            'bm.date' => ['sort' => false],
+            'bm.size' => ['sort' => false],
+            'bm.manage' => [
+                'type' => Table::COL_TOOLBAR,
+            ],
+        ]);
+
+        $table->setNoResultsText(sprintf(lang('no_found'), lang('bm.backups')));
+
+        $backups = ee('Database/Backup', PATH_CACHE)->getBackups();
+
+        $page = ((int)ee('Request')->get('page')) ?: 1;
+        $offset = ($page - 1) * $this->per_page; // Offset is 0 indexed
+
+        // Handle Pagination
+        $totalBackups = 0;// count($backups);
+
+        $data = [];
+        $sort_map = [
+            'la.id' => 'id',
+            'la.name' => 'name',
+        ];
+
+        foreach ($backups as $backup) {
+            $data[] = [
+                $backup['filename'],
+                $backup['date'],
+                $backup['size'],
+                ['toolbar_items' => [
+                    'download' => [
+                        'href' => ee('CP/URL')->make( 'utilities/db-backup/download', ['id' => $backup['hash']]),
+                        'title' => lang('bm.download'),
+                    ],
+                    'remove' => [
+                        'href' => ee('CP/URL')->make('utilities/db-backup/remove', ['id' => $backup['hash']])->compile(),
+                        'title' => lang('bm.remove'),
+                    ],
+                ]],
+            ];
+        }
+
+        $table->setData($data);
+
+        $vars['pagination'] = ee('CP/Pagination', $totalBackups)
+            ->perPage($this->per_page)
+            ->currentPage($page)
+            ->render($base_url);
+        $vars['table'] = $table->viewData($base_url);
+        $vars['base_url'] = $base_url;
+
+        ee()->cp->render('backups/index', $vars);
+        //return $this;
+    }
+
+    public function download()
+    {
+        $path = ee('Database/Backup', PATH_CACHE)->getBackup(ee()->input->get('id'));
+
+        header('Content-Type: application/octet-stream');
+        header("Content-Transfer-Encoding: Binary");
+        header("Content-disposition: attachment; filename=\"" . basename($path) . "\"");
+        ob_clean(); flush();
+        readfile($path);
+        exit;
+    }
+
+    public function backup()
     {
         $tables = ee('Database/Backup/Query')->getTables();
 
