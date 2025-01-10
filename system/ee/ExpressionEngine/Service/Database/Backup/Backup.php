@@ -466,6 +466,7 @@ EOT;
     public function getBackups(): array
     {
         $return = [];
+        $format = ee()->session->userdata('date_format', ee()->config->item('date_format'));
         $db_name = ee()->db->database;
         if(is_dir(PATH_CACHE)) {
             $files = scandir(PATH_CACHE, SCANDIR_SORT_DESCENDING,);
@@ -476,8 +477,8 @@ EOT;
                     $return[$file] = [
                         'filename' => $file,
                         'full_path' => $path,
-                        'size' => $details['size'],
-                        'date' => $details['mtime'],
+                        'size' => ee('Format')->make('Number', $details['size'])->bytes(),
+                        'date' => ee()->localize->format_date($format . ' - %g:%i:%s %A', $details['mtime']),
                         'hash' => ee('Encrypt')->encode($file)
                     ];
                 }

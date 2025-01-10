@@ -11,62 +11,44 @@
 namespace ExpressionEngine\Controller\Utilities;
 
 use ExpressionEngine\Library\CP\Table;
+use ExpressionEngine\Library\CP\Form;
 
 /**
  * Database Backup Utility Controller
  */
 class DbBackup extends Utilities
 {
-    public $per_page = 25;
-
-    protected $base_url = '';
+    protected $base_url = 'utilities/db-backup';
 
     public function index()
     {
         $sort_col = ee('Request')->get('sort_col') ?: 'bm.id';
         $sort_dir = ee('Request')->get('sort_dir') ?: 'desc';
-        $this->per_page = ee('Request')->get('perpage') ?: $this->per_page;
 
-        $query = [
-            'sort_col' => $sort_col,
-            'sort_dir' => $sort_dir,
-        ];
-
-        $base_url = ee('CP/URL')->make($this->base_url . '/index', $query);
+        $base_url = ee('CP/URL')->make($this->base_url . '/index');
         $table = ee('CP/Table', [
             'lang_cols' => true,
             'sort_col' => $sort_col,
             'sort_dir' => $sort_dir,
-            'class' => 'backup_manager',
-            'limit' => $this->per_page,
+            'class' => 'backup_manager'
         ]);
 
         $vars['cp_page_title'] = lang('bm.title');
         $table->setColumns([
-            'bm.file_name' => ['sort' => false],
-            'bm.date' => ['sort' => false],
-            'bm.size' => ['sort' => false],
-            'bm.manage' => [
+            'file_name' => ['sort' => false],
+            'date' => ['sort' => false],
+            'size' => ['sort' => false, 'encode' => false],
+            'manage' => [
                 'type' => Table::COL_TOOLBAR,
             ],
         ]);
 
-        $table->setNoResultsText(sprintf(lang('no_found'), lang('bm.backups')));
+        $table->setNoResultsText(sprintf(lang('no_found'), lang('backups')));
 
         $backups = ee('Database/Backup', PATH_CACHE)->getBackups();
 
-        $page = ((int)ee('Request')->get('page')) ?: 1;
-        $offset = ($page - 1) * $this->per_page; // Offset is 0 indexed
-
-        // Handle Pagination
-        $totalBackups = 0;// count($backups);
-
+        $totalBackups = 0;
         $data = [];
-        $sort_map = [
-            'la.id' => 'id',
-            'la.name' => 'name',
-        ];
-
         foreach ($backups as $backup) {
             $data[] = [
                 $backup['filename'],
@@ -75,26 +57,25 @@ class DbBackup extends Utilities
                 ['toolbar_items' => [
                     'download' => [
                         'href' => ee('CP/URL')->make( 'utilities/db-backup/download', ['id' => $backup['hash']]),
-                        'title' => lang('bm.download'),
+                        'title' => lang('download'),
                     ],
                     'remove' => [
                         'href' => ee('CP/URL')->make('utilities/db-backup/remove', ['id' => $backup['hash']])->compile(),
-                        'title' => lang('bm.remove'),
+                        'title' => lang('remove'),
                     ],
                 ]],
             ];
         }
 
-        $table->setData($data);
+        ee()->view->cp_breadcrumbs = array(
+            '' => lang('backups')
+        );
 
-        $vars['pagination'] = ee('CP/Pagination', $totalBackups)
-            ->perPage($this->per_page)
-            ->currentPage($page)
-            ->render($base_url);
+        $table->setData($data);
         $vars['table'] = $table->viewData($base_url);
         $vars['base_url'] = $base_url;
 
-        ee()->cp->render('backups/index', $vars);
+        ee()->cp->render('utilities/backups/index', $vars);
         //return $this;
     }
 
@@ -108,6 +89,47 @@ class DbBackup extends Utilities
         ob_clean(); flush();
         readfile($path);
         exit;
+    }
+
+    public function remove($id = false)
+    {
+        $id = ee()->input->get('id');
+        $path = ee('Database/Backup', PATH_CACHE)->getBackup($id);
+        if (is_null($path)) {
+            ee()->functions->redirect(ee('CP/URL')->make($this->base_url));
+        }
+
+        $form = new Form;
+        $field_group = $form->getGroup('bm.form.header.remove_backup');
+        $field_set = $field_group->getFieldSet('bm.form.confirm_remove_backup');
+        $field_set->setDesc('bm.form.desc.confirm_delete');
+        $field_set->getField('confirm', 'yes_no');
+
+        $form = $form->toArray();
+
+        if (!empty($_POST) && ee()->input->post('confirm') == 'y') {
+            ee('backup_manager:BackupsService')->deleteBackup($path);
+            ee('CP/Alert')->makeInline('shared-form')
+                ->asSuccess()
+                ->withTitle(lang('bm.backup_deleted'))
+                ->defer();
+
+            ee()->functions->redirect($this->url('index'));
+        }
+
+        $vars = [
+            'cp_page_title' => lang('bm.header.remove_backup'),
+            'base_url' => $this->url('remove/', true, ['id' => $id]),
+            'save_btn_text' => lang('bm.remove'),
+            'save_btn_text_working' => lang('bm.removing'),
+        ];
+
+        $vars += $form->generate();
+
+        $this->addBreadcrumb($this->url('edit'), 'bm.header.remove_backup');
+        $this->setBody('Remove', $vars);
+        $this->setHeading('bm.header.remove_backup');
+        return $this;
     }
 
     public function backup()
