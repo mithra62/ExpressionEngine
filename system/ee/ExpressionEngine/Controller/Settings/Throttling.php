@@ -96,13 +96,6 @@ class Throttling extends Settings
             ),
             'throttling_allow_settings' => array(
                 array(
-                    'title' => 'throttle_ignore_logged_in',
-                    'desc' => 'throttle_ignore_logged_in_desc',
-                    'fields' => array(
-                        'throttle_ignore_logged_in' => array('type' => 'yes_no')
-                    )
-                ),
-                array(
                     'title' => 'throttling_allowed_ips',
                     'desc' => 'throttling_allowed_ips_desc',
                     'fields' => array(
