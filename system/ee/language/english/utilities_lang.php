@@ -10,6 +10,16 @@ $lang = array(
 
     'backups' => 'Backups',
 
+    'remove_backup' => 'Remove Backup',
+
+    'verify_remove_backup' => 'Verify Remove Backup',
+
+    'confirm_remove_backup' => 'Confirm Removal',
+
+    'confirm_delete_desc' => 'Are you sure you want to remove this backup?',
+
+    'backup_deleted' => 'Backup Deleted',
+
     'cache_manager' => 'Cache Manager',
 
     'communicate' => 'Communicate',

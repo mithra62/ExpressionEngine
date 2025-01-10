@@ -100,36 +100,38 @@ class DbBackup extends Utilities
         }
 
         $form = new Form;
-        $field_group = $form->getGroup('bm.form.header.remove_backup');
-        $field_set = $field_group->getFieldSet('bm.form.confirm_remove_backup');
-        $field_set->setDesc('bm.form.desc.confirm_delete');
+        $field_group = $form->getGroup('verify_remove_backup');
+        $field_set = $field_group->getFieldSet('confirm_remove_backup');
+        $field_set->setDesc('confirm_delete_desc');
         $field_set->getField('confirm', 'yes_no');
 
         $form = $form->toArray();
 
         if (!empty($_POST) && ee()->input->post('confirm') == 'y') {
-            ee('backup_manager:BackupsService')->deleteBackup($path);
+            ee('Database/Backup', PATH_CACHE)->deleteBackup($path);
             ee('CP/Alert')->makeInline('shared-form')
                 ->asSuccess()
-                ->withTitle(lang('bm.backup_deleted'))
+                ->withTitle(lang('backup_deleted'))
                 ->defer();
 
-            ee()->functions->redirect($this->url('index'));
+            ee()->functions->redirect(ee('CP/URL')->make($this->base_url));
         }
 
         $vars = [
-            'cp_page_title' => lang('bm.header.remove_backup'),
-            'base_url' => $this->url('remove/', true, ['id' => $id]),
-            'save_btn_text' => lang('bm.remove'),
-            'save_btn_text_working' => lang('bm.removing'),
+            'cp_page_title' => lang('remove_backup'),
+            'base_url' => ee('CP/URL')->make('utilities/db-backup/remove', ['id' => $id])->compile(),
+            'save_btn_text' => lang('remove'),
+            'save_btn_text_working' => lang('removing'),
         ];
 
-        $vars += $form->generate();
+        $vars += $form;
 
-        $this->addBreadcrumb($this->url('edit'), 'bm.header.remove_backup');
-        $this->setBody('Remove', $vars);
-        $this->setHeading('bm.header.remove_backup');
-        return $this;
+        ee()->view->cp_breadcrumbs = array(
+            ee('CP/URL')->make('utilities/db-backup')->compile() => lang('backups'),
+            '' => lang('remove_backup')
+        );
+
+        ee()->cp->render('settings/form', $vars);
     }
 
     public function backup()
