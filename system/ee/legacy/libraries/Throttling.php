@@ -24,7 +24,7 @@ class EE_Throttling
     /** ----------------------------------------------*/
     public function run()
     {
-        if (!$this->should_throttle()) {
+        if (! $this->should_throttle()) {
             return;
         }
 
@@ -56,7 +56,7 @@ class EE_Throttling
                 $ips = explode(',', ee()->config->item('throttling_allowed_ips'));
                 if ($ips && is_array($ips) && count($ips) >= 1) {
                     foreach ($ips AS $ip) {
-                        if ($ip != '' && $ip == ee()->input->ip_address()) {
+                        if (filter_var($ip, FILTER_VALIDATE_IP) && $ip == ee()->input->ip_address()) {
                             $return = false;
                             break;
                         }
