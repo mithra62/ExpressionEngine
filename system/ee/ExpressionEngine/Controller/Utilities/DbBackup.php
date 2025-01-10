@@ -188,6 +188,7 @@ class DbBackup extends Utilities
         ]);
 
         ee()->view->cp_breadcrumbs = array(
+            ee('CP/URL')->make('utilities/db-backup')->compile() => lang('backups'),
             '' => lang('backup_database')
         );
 
