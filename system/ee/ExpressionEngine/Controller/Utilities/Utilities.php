@@ -117,8 +117,6 @@ class Utilities extends CP_Controller
 
             $db_list->addItem(lang('sql_manager_abbr'), ee('CP/URL')->make('utilities/sql'));
 
-
-
             $url = ee('CP/URL')->make('utilities/query');
             $item = $db_list->addItem(lang('query_form'), $url);
             if ($url->matchesTheRequestedURI()) {
